@@ -77,10 +77,24 @@ TANGGAL_MULAI_VALID = pd.Timestamp("2025-01-01")
 # Batas wajar "jumlah peserta" sosialisasi (ada nilai 2.147.483.647 = error)
 MAKS_PESERTA_SOSIALISASI = 100_000
 
+# Nama tab Excel yang dibaca aplikasi.
+# Kunci internal tetap berupa kode agar kompatibel dengan app.py.
+NAMA_SHEET = {
+    "0.1": "Jumlah Unit Layanan",
+    "1": "JMO Mitra Biometrik",
+    "2": "JMO Mitra Antol",
+    "2.0": "Standarisasi",
+    "3": "Asistensi Klaim",
+    "4": "Pelayanan Informasi Pengaduan",
+    "5": "Data Sosialisasi Petugas",
+    "6": "Data Perekaman Tenaga Kerja",
+    "7": "Data Perekaman Perusahaan",
+}
+
 # Konfigurasi tampilan tiap sheet (dipakai app.py)
 SHEETS = {
     "1": {
-        "judul": "Klaim JHT Biometrik",
+        "judul": "JMO Mitra Biometrik",
         "grup": "JMO-Mitra",
         "satuan": "klaim",
         "tanggal_acuan": "tgl_klaim",
@@ -88,7 +102,7 @@ SHEETS = {
         "nilai2_rupiah": True,
     },
     "2": {
-        "judul": "Klaim JHT Lapak Asik/Antol",
+        "judul": "JMO Mitra Antol",
         "grup": "JMO-Mitra",
         "satuan": "klaim",
         "tanggal_acuan": "tanggal",
@@ -104,7 +118,7 @@ SHEETS = {
         "nilai2_rupiah": False,
     },
     "4": {
-        "judul": "Layanan Informasi & Pengaduan",
+        "judul": "Pelayanan Informasi Pengaduan",
         "grup": "Informasi & Pengaduan",
         "satuan": "layanan",
         "tanggal_acuan": "Tgl Layanan",
@@ -112,7 +126,7 @@ SHEETS = {
         "nilai2_rupiah": False,
     },
     "5": {
-        "judul": "Sosialisasi",
+        "judul": "Data Sosialisasi Petugas",
         "grup": "Sosialisasi",
         "satuan": "kegiatan",
         "tanggal_acuan": "Tgl Sosialisasi",
@@ -120,7 +134,7 @@ SHEETS = {
         "nilai2_rupiah": False,
     },
     "6": {
-        "judul": "Pendaftaran TK",
+        "judul": "Data Perekaman Tenaga Kerja",
         "grup": "Perekaman",
         "satuan": "pendaftaran",
         "tanggal_acuan": "Tgl Daftar",
@@ -128,7 +142,7 @@ SHEETS = {
         "nilai2_rupiah": False,
     },
     "7": {
-        "judul": "Pendaftaran Perusahaan",
+        "judul": "Data Perekaman Perusahaan",
         "grup": "Perekaman",
         "satuan": "pendaftaran",
         "tanggal_acuan": "Tgl Daftar",
@@ -408,25 +422,25 @@ def proses_excel(sumber, nama_file="", progress=None):
     xl = pd.ExcelFile(sumber)
 
     # --- referensi
-    lapor("Membaca sheet referensi (0.1, 2.0)...")
+    lapor("Membaca sheet referensi (Jumlah Unit Layanan, Standarisasi)...")
     s01 = _baca(
-        xl, "0.1",
+        xl, NAMA_SHEET["0.1"],
         {"KANWIL", "Unit Layanan BPJS Ketenagakerjaan NAME", "NAMA KANTOR CABANG PAIRING"},
         {"KODE USER", "LATITUDE, LONGTITUDE PENEMPATAN"},
     )
-    s20 = _baca(xl, "2.0", {"KANWIL", "UL NAME"}, {"USER ID"})
+    s20 = _baca(xl, NAMA_SHEET["2.0"], {"KANWIL", "UL NAME"}, {"USER ID"})
 
     # --- sheet 1 (klaim biometrik) dan sheet 2 (Lapak Asik)
-    lapor("Membaca sheet 1 (klaim biometrik)...")
+    lapor("Membaca sheet JMO Mitra Biometrik...")
     s1 = _baca(
-        xl, "1",
+        xl, NAMA_SHEET["1"],
         {
             "kode_pengajuan", "nama_mitra", "kode_wilayah_pairing", "kode_kantor_pairing",
             "nama_kantor_pairing", "tgl_klaim", "tgl_rekam", "status_pengajuan", "nom_manfaat_netto",
         },
     )
-    lapor("Membaca sheet 2 (Lapak Asik)...")
-    s2 = _baca(xl, "2", {"tanggal", "kanwil", "unit", "tgl_rekam", "jmlh_data"})
+    lapor("Membaca sheet JMO Mitra Antol...")
+    s2 = _baca(xl, NAMA_SHEET["2"], {"tanggal", "kanwil", "unit", "tgl_rekam", "jmlh_data"})
 
     master = buat_master_ul(s01, s20, s1, s2)
     peta_cabang = buat_peta_cabang(s1)
@@ -456,7 +470,7 @@ def proses_excel(sumber, nama_file="", progress=None):
     # ------------------ sheet 1
     # Semua status ikut dihitung di halaman Layanan (sama dengan pivot 1.1/1.2 dari user);
     # ada pilihan "hanya DIBAYAR" lewat kolom status. Halaman Home membuang DIBATALKAN.
-    lapor("Membersihkan sheet 1...")
+    lapor("Membersihkan sheet JMO Mitra Biometrik...")
     batas = pd.to_datetime(s1["tgl_rekam"], errors="coerce").max().normalize()
     t = pd.DataFrame(index=s1.index)
     t["tanggal"], diganti = tanggal_dengan_cadangan(s1["tgl_klaim"], s1["tgl_rekam"], batas)
@@ -475,7 +489,7 @@ def proses_excel(sumber, nama_file="", progress=None):
     )
 
     # ------------------ sheet 2
-    lapor("Membersihkan sheet 2...")
+    lapor("Membersihkan sheet JMO Mitra Antol...")
     batas = pd.to_datetime(s2["tgl_rekam"], errors="coerce").max().normalize()
     t = pd.DataFrame(index=s2.index)
     t["tanggal"], diganti = tanggal_dengan_cadangan(s2["tanggal"], s2["tgl_rekam"], batas)
@@ -499,16 +513,16 @@ def proses_excel(sumber, nama_file="", progress=None):
         "7": ("Tgl Daftar", {"IDKW", "IDKC", "User Petugas", "Tgl Rekam", "Tgl Daftar"}),
     }
     for kunci, (kol_tgl, kolom) in spesifik.items():
-        lapor(f"Membaca dan membersihkan sheet {kunci} ({SHEETS[kunci]['judul']})...")
-        df = _baca(xl, kunci, kolom)
+        lapor(f"Membaca dan membersihkan sheet {NAMA_SHEET[kunci]}...")
+        df = _baca(xl, NAMA_SHEET[kunci], kolom)
         df["_batas"] = pd.to_datetime(df["Tgl Rekam"], errors="coerce").max().normalize()
         t = _tabel_dengan_kode(df, "IDKW", "IDKC", "User Petugas", kol_tgl, peta_cabang, peta_user)
         simpan(kunci, t, len(df), t.attrs.get("tanggal_diganti", 0))
         del df
 
     # ------------------ sheet 5 (sosialisasi): kolomnya beda sendiri
-    lapor("Membaca dan membersihkan sheet 5 (Sosialisasi)...")
-    df = _baca(xl, "5", {"Kanwil", "Pairing", "User Petugas", "Tgl Rekam", "Tgl Sosialisasi", "Jml Peserta"})
+    lapor("Membaca dan membersihkan sheet Data Sosialisasi Petugas...")
+    df = _baca(xl, NAMA_SHEET["5"], {"Kanwil", "Pairing", "User Petugas", "Tgl Rekam", "Tgl Sosialisasi", "Jml Peserta"})
     df["_batas"] = pd.to_datetime(df["Tgl Rekam"], errors="coerce").max().normalize()
     t = _tabel_dengan_kode(df, "Kanwil", "Pairing", "User Petugas", "Tgl Sosialisasi", peta_cabang, peta_user)
     peserta = pd.to_numeric(df["Jml Peserta"], errors="coerce")
